@@ -1,0 +1,90 @@
+---
+title: "Exercise 1: Plot Deconstruction.qmd"
+workshop: 3
+format: html
+author: Alan Tavares
+---
+
+## Part 1: The Original Plot
+
+Source: Our World in Data, Seafood production: wild fish catch vs. aquaculture
+
+## Part 2: Visual Critique
+
+**The Message:**
+
+The chart aims to show that global aquaculture (farmed seafood) production has grown dramatically since 1960 and overtook wild capture fisheries production around 2012–2013, while capture fisheries have remained roughly flat since the early 1990s.
+
+**The Flaws:**
+
+1.  Linear scale flattens the smaller trend. Because aquaculture grows from near-zero to over 140 million tonnes, the y-axis scale is stretched to accommodate that range, compressing the capture fisheries line into what looks like an almost flat trend.
+
+2.  The key moment isn't highlighted. The crossover point where aquaculture overtakes capture fisheries has no visual marker or annotation so the reader has to spot it themselves.
+
+## Part 3: Data
+
+```{r}
+library(tidyverse)
+
+seafood <- read_csv("data/capture-fisheries-vs-aquaculture.csv") |>
+  filter(Entity == "World") |>
+  select(Year, Aquaculture, `Capture fisheries`) |>
+  pivot_longer(cols = c(Aquaculture, `Capture fisheries`),
+               names_to = "production_type",
+               values_to = "tonnes") |>
+  mutate(million_tonnes = tonnes / 1e6)
+
+glimpse(seafood)
+
+```
+
+## Part 4: Plot Reconstruction
+
+```{r}
+# find the year aquaculture overtakes capture fisheries, to mark on the plot
+crossover <- seafood |>
+  pivot_wider(names_from = production_type, values_from = million_tonnes) |>
+  filter(Aquaculture >= `Capture fisheries`) |>
+  slice_min(Year) |>
+  pull(Year)
+
+crossover
+
+# building the figure with two fixes for the flaws identified in Part 2:
+# a marked crossover point, and an accessible colour palette
+ggplot(seafood, aes(x = Year, y = million_tonnes, color = production_type)) +
+  geom_vline(xintercept = crossover, linetype = "dashed",
+             color = "grey60", linewidth = 0.5) +
+  annotate("text", x = crossover + 1, y = 5,
+           label = paste0("Aquaculture overtakes\ncapture fisheries (", crossover, ")"),
+           hjust = 0, size = 3, color = "grey30") +
+  geom_line(linewidth = 1) +
+  scale_color_viridis_d(name = "Production type", begin = 0.2, end = 0.8) +
+  labs(
+    title = "Global aquaculture has overtaken wild fish catch",
+    subtitle = "World seafood production, 1960–2024",
+    x = NULL,
+    y = "Production (million tonnes)",
+    caption = paste(
+      "Figure 1. Global capture fisheries (wild-caught) production has",
+      "plateaued around 90 million tonnes since the early 1990s, while",
+      "aquaculture (farmed) production has grown exponentially, overtaking",
+      "wild catch around", paste0(crossover, "."),
+      "Dashed line marks the crossover year.",
+      "Data: FAO, via World Bank (2026), OurWorldInData.org.",
+      sep = "\n"
+    )
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    plot.caption = element_text(hjust = 0, size = 8, color = "grey40"),
+    legend.position = "top"
+  )
+```
+
+The reconstructed figure shows two very different growth patterns in global seafood production since 1960. Aquaculture started from almost nothing (around 2 million tonnes) and has grown steadily and increasingly quickly, reaching over 140 million tonnes by 2024. Capture fisheries (wild-caught seafood), by contrast, grew until about 1990 and then levelled off at roughly 90 million tonnes, where it has stayed with normal year-to-year ups and downs for more than three decades. This plateau matches what's widely reported about many wild fish stocks: they're being caught at or near their maximum sustainable limits, so catch can't keep growing the way it once did.
+
+The two lines cross around 2012–2013, the point where farmed seafood overtook wild-caught seafood as the world's larger source. Since then, aquaculture has continued to pull further ahead. This matters because it suggests that most future growth in the world's seafood supply will have to come from farming rather than wild harvest, which brings its own set of challenges (like feed sourcing and habitat impacts) that are different from the overfishing concerns tied to capture fisheries.
+
+This ties back to the two flaws I picked out earlier. Marking the crossover year on the plot fixes the problem of it being invisible in the original. And keeping both lines clearly labelled means capture fisheries doesn't just disappear into a flat boring line next to aquaculture's huge growth, even though the scale still favours aquaculture.
