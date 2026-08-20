@@ -230,7 +230,7 @@ library(usethis)
 use_git_config(user.name="Alan Tavares", user.email= "alanrichardtavares2003@gmail.com")
 ```
 ```{r}
-# Create a personal access token (PAT)
+# Create a personal access token (PAT) or
 
 credentials::git_credential_ask()
 usethis::git_sitrep()
