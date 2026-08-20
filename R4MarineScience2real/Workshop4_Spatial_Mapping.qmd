@@ -1,0 +1,164 @@
+---
+title: "Workshop4_Spatial_Mapping.qmd"
+author: "Alan Tavares"
+format: html
+editor: visual
+---
+
+## Setup
+
+```{r}
+#| label: setup
+#| message: false
+
+library(tidyverse)
+library(sf)      # simple features for spatial data
+# library(terra) # for raster data (not used in this basic workflow)
+# library(tmap)  # optional - only if it installed successfully
+```
+
+## Load the copepod data
+
+```{r}
+#| label: load-data
+
+dat <- read_csv("copepods_raw.csv")
+```
+
+## Data exploration
+
+First look at the raw coordinates, coloured by species richness.
+
+```{r}
+#| label: explore-coords
+#| fig-width: 7
+#| fig-height: 5
+
+ggplot(dat) +
+  aes(x = longitude, y = latitude, color = richness_raw) +
+  geom_point() +
+  scale_color_viridis_c(name = "Richness") +
+  labs(
+    title = "Copepod sample locations",
+    x = "Longitude", y = "Latitude"
+  ) +
+  theme_minimal()
+```
+
+Check richness against latitude for any unusual patterns.
+
+```{r}
+#| label: explore-richness
+#| fig-width: 7
+#| fig-height: 5
+
+ggplot(dat, aes(x = latitude, y = richness_raw)) +
+  stat_smooth() +
+  geom_point(alpha = 0.5) +
+  labs(
+    title = "Copepod richness by latitude",
+    x = "Latitude", y = "Species richness"
+  ) +
+  theme_minimal()
+```
+
+## Convert to a spatial (sf) object
+
+```{r}
+#| label: make-sf
+
+sdat <- st_as_sf(dat, coords = c("longitude", "latitude"), crs = 4326)
+sdat
+```
+
+## Check the coordinate reference system
+
+```{r}
+#| label: check-crs
+
+st_crs(sdat)$Name
+```
+
+## Basic spatial plot
+
+```{r}
+#| label: basic-plot
+#| fig-width: 7
+#| fig-height: 5
+
+plot(sdat["richness_raw"])
+```
+
+## Thematic map with ggplot2 (geom_sf)
+
+This achieves the same result as `tmap`, using `ggplot2`'s built-in spatial support.
+
+```{r}
+#| label: ggplot-map
+#| fig-width: 7
+#| fig-height: 5.5
+
+ggplot(sdat) +
+  geom_sf(aes(color = richness_raw), size = 1.5, alpha = 0.8) +
+  scale_color_viridis_c(name = "Species\nrichness") +
+  labs(
+    title = "Copepod species richness",
+    subtitle = "AusCPR sampling locations",
+    caption = "Data: AusCPR (modified for teaching purposes)"
+  ) +
+  theme_minimal()
+```
+
+## Adding polygon layers (Australia + continental shelf)
+
+```{r}
+#| label: load-shapefiles
+
+aus <- st_read("Aussie/Aussie.shp")
+shelf <- st_read("aus_shelf/aus_shelf.shp")
+```
+
+```{r}
+#| label: layered-map
+#| fig-width: 7
+#| fig-height: 5.5
+
+ggplot() +
+  geom_sf(data = shelf, fill = "grey85", color = "grey60") +
+  geom_sf(data = aus, fill = "grey40", color = "grey20") +
+  geom_sf(data = sdat, aes(color = richness_raw), size = 1.2, alpha = 0.8) +
+  scale_color_viridis_c(name = "Species\nrichness") +
+  labs(
+    title = "Copepod richness relative to the Australian coastline",
+    subtitle = "Continental shelf shown in light grey",
+    caption = "Data: AusCPR (modified for teaching purposes)"
+  ) +
+  theme_minimal()
+```
+
+## Optional: tmap version
+
+Only run this section if `tmap` installed successfully.
+
+```{r}
+#| label: tmap-version
+#| eval: false
+
+library(tmap)
+
+tm_shape(shelf, bbox = sdat) +
+  tm_polygons() +
+  tm_shape(aus) +
+  tm_polygons() +
+  tm_shape(sdat) +
+  tm_dots(col = "richness_raw", palette = "viridis", title = "Richness")
+```
+
+## Summary
+
+This workshop demonstrated:
+
+- Loading and exploring copepod species richness data
+- Converting tabular coordinates into a spatially referenced `sf` object
+- Understanding coordinate reference systems (CRS)
+- Building thematic maps combining point data with polygon layers, using `ggplot2::geom_sf()` as a reliable alternative to `tmap`
