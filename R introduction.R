@@ -99,8 +99,7 @@ library(ggplot2)
 #2 Import the .csv data set into R
 #3
 ----------------------------------
-# Title: 
-# date: 21-05-26
+
 
 library(tidyverse)
 # Incase of errors while loading packages you can use remove packages using
